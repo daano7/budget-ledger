@@ -418,25 +418,20 @@ body {
       monthData = await buildDefaultForMonth(offset);
     }
     renderMonth();
+    renderGoals();
   }
 
   async function buildDefaultForMonth(offset) {
-    // look back up to 12 months for the most recent existing data to carry expense structure forward
-    for (let back = 1; back <= 12; back++) {
-      try {
-        const res = await Store.get('budget:' + monthKey(offset - back));
-        const prev = JSON.parse(res.value);
-        return { income: prev.income, expenses: prev.expenses.map(x => ({ ...x })), vwce: prev.vwce, tech: prev.tech };
-      } catch (e) { /* keep looking */ }
-    }
+    // Always start a new month from the standard baseline — nothing carries
+    // forward automatically, so temporary items (Klarna, one-off payments)
+    // don't linger into months where they no longer apply.
     return { income: 2000, expenses: DEFAULT_EXPENSES.map(x => ({ ...x })), vwce: 200, tech: 0 };
   }
 
-  async function saveMonth() {
-    const key = 'budget:' + monthKey(monthOffset);
+  async function saveMonthData(key, data) {
     const statusEl = document.getElementById('statusLine');
     try {
-      const res = await Store.set(key, JSON.stringify(monthData));
+      const res = await Store.set(key, JSON.stringify(data));
       setStatus(statusEl, res ? 'Saved' : 'Could not save');
     } catch (e) {
       setStatus(statusEl, 'Could not save');
@@ -445,7 +440,22 @@ body {
 
   function queueSave() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveMonth, 500);
+    // Snapshot the key and data right now, at edit time — not when the
+    // timer fires later. This is what makes each month's data stay put
+    // even if you switch months again before the save completes.
+    const key = 'budget:' + monthKey(monthOffset);
+    const snapshot = JSON.parse(JSON.stringify(monthData));
+    saveTimer = setTimeout(() => saveMonthData(key, snapshot), 500);
+  }
+
+  function flushPendingSave() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      const key = 'budget:' + monthKey(monthOffset);
+      const snapshot = JSON.parse(JSON.stringify(monthData));
+      saveMonthData(key, snapshot);
+    }
   }
 
   function renderMonth() {
@@ -521,8 +531,8 @@ body {
     renderMonth(); queueSave();
   });
 
-  document.getElementById('prevMonth').addEventListener('click', () => { monthOffset--; loadMonth(monthOffset); });
-  document.getElementById('nextMonth').addEventListener('click', () => { monthOffset++; loadMonth(monthOffset); });
+  document.getElementById('prevMonth').addEventListener('click', () => { flushPendingSave(); monthOffset--; loadMonth(monthOffset); });
+  document.getElementById('nextMonth').addEventListener('click', () => { flushPendingSave(); monthOffset++; loadMonth(monthOffset); });
 
   // Tabs
   document.querySelectorAll('.tab').forEach(tab => {
@@ -543,6 +553,11 @@ body {
       const res = await Store.get('budget:goals');
       goals = JSON.parse(res.value);
     } catch (e) {
+      // no stored goals yet
+    }
+    if (!goals.car) goals.car = {};
+    if (!goals.ef) goals.ef = {};
+    if (!goals.car.date) {
       const d = new Date(currentDate.getFullYear() + 1, 11, 31);
       goals.car.date = d.toISOString().slice(0, 10);
     }
@@ -571,6 +586,10 @@ body {
     goalsSaveTimer = setTimeout(saveGoals, 500);
   }
 
+  function viewedDate() {
+    return new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset, 1);
+  }
+
   function renderGoals() {
     const efTarget = goals.ef.target || 0;
     const efSaved = goals.ef.saved || 0;
@@ -584,7 +603,7 @@ body {
         ? `At <strong>€${goals.ef.monthly}/month</strong>, you'll reach this in about <strong>${months} month${months === 1 ? '' : 's'}</strong>.`
         : `Target reached.`;
     } else if (efTarget > 0) {
-      efNote = `${efPct.toFixed(0)}% saved.`;
+      efNote = `${efPct.toFixed(0)}% saved. Add a monthly amount above to see a timeline.`;
     }
     document.getElementById('efNote').innerHTML = efNote;
 
@@ -593,13 +612,17 @@ body {
     const carPct = carTarget > 0 ? Math.min(100, (carSaved / carTarget) * 100) : 0;
     document.getElementById('carProgress').style.width = carPct + '%';
     let carNote = '';
-    if (carTarget > 0 && goals.car.date) {
-      const target = new Date(goals.car.date);
-      const now = new Date();
+    if (carTarget > 0 && !goals.car.date) {
+      carNote = `Set a target date above to see how much you need to save each month.`;
+    } else if (carTarget > 0 && goals.car.date) {
+      const target = new Date(goals.car.date + 'T00:00:00');
+      const now = viewedDate();
       const monthsRemaining = Math.max(1, Math.round((target - now) / (1000 * 60 * 60 * 24 * 30.44)));
       const remaining = Math.max(0, carTarget - carSaved);
       const requiredMonthly = Math.ceil(remaining / monthsRemaining);
-      carNote = `About <strong>${monthsRemaining} months</strong> left — you'll need roughly <strong>€${requiredMonthly.toLocaleString('en-GB')}/month</strong> to hit this on time.`;
+      carNote = remaining <= 0
+        ? `Target reached — ${carPct.toFixed(0)}% saved.`
+        : `As of <strong>${monthLabel(monthOffset)}</strong>: about <strong>${monthsRemaining} months</strong> left — you'll need roughly <strong>€${requiredMonthly.toLocaleString('en-GB')}/month</strong> to hit this on time.`;
     }
     document.getElementById('carNote').innerHTML = carNote;
   }
