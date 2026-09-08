@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#EDEEE7">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Budget Ledger</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #EDEEE7;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+:root {
+  --paper: #EDEEE7;
+  --panel: #F5F5EF;
+  --line: #D6D6C8;
+  --line-soft: #E3E3D8;
+  --ink: #22312B;
+  --ink-soft: #6B7269;
+  --gold: #9C7A2E;
+  --green: #2F6F53;
+  --red: #9C3B33;
+}
+
+* { box-sizing: border-box; }
+
+.ledger-root {
+  font-family: 'Inter', sans-serif;
+  color: var(--ink);
+  background: transparent;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 4px 4px 32px;
+}
+
+.ledger-root h1, .ledger-root h2 {
+  font-family: 'Newsreader', serif;
+  font-weight: 500;
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 4px 18px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+
+.header h1 { font-size: 22px; letter-spacing: -0.01em; }
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.month-nav button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.month-nav button:hover { color: var(--gold); }
+.month-nav span { min-width: 92px; text-align: center; }
+
+.tabs {
+  display: flex;
+  gap: 22px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.tab {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  padding: 0 0 10px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab.active { color: var(--ink); border-bottom-color: var(--gold); }
+
+.section { margin-bottom: 26px; }
+.section-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+}
+.row .name-input {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 0;
+  width: 40%;
+  min-width: 90px;
+}
+.row .name-input:focus { outline: none; color: var(--gold); }
+.leader {
+  flex: 1;
+  border-bottom: 1px dotted var(--line);
+  margin-bottom: 5px;
+  min-width: 10px;
+}
+.row .amount-wrap {
+  display: flex;
+  align-items: baseline;
+  flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+}
+.row .amount-wrap span.cur { color: var(--ink-soft); margin-right: 2px; }
+.row .amount-input {
+  border: none;
+  background: transparent;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  color: var(--ink);
+  text-align: right;
+  width: 64px;
+  padding: 0;
+}
+.row .amount-input:focus { outline: none; color: var(--gold); }
+.row .remove-btn {
+  border: none;
+  background: none;
+  color: var(--line);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  line-height: 1;
+}
+.row .remove-btn:hover { color: var(--red); }
+
+.add-line {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  cursor: pointer;
+  padding: 6px 0 0;
+}
+.add-line:hover { color: var(--gold); }
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--line-soft);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14.5px;
+  font-weight: 500;
+}
+
+.summary {
+  border-top: 2px solid var(--ink);
+  margin-top: 6px;
+  padding-top: 16px;
+}
+.summary .figure {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.summary .figure.pos { color: var(--green); }
+.summary .figure.neg { color: var(--red); }
+.summary .caption {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.income-row .amount-input { width: 84px; font-size: 20px; }
+.income-row { padding: 4px 0 20px; border-bottom: 1px solid var(--line-soft); margin-bottom: 6px; }
+.income-row .name-input { font-size: 15px; font-weight: 500; }
+
+.goal-card {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 16px 16px 14px;
+  margin-bottom: 18px;
+  background: var(--panel);
+}
+.goal-title { font-family: 'Newsreader', serif; font-size: 17px; margin-bottom: 12px; }
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.field-row label { color: var(--ink-soft); }
+.field-row input {
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: right;
+  width: 110px;
+  padding: 2px 0;
+}
+.field-row input:focus { outline: none; border-bottom-color: var(--gold); }
+.field-row input[type="date"] { width: 130px; text-align: right; }
+
+.progress-track {
+  height: 6px;
+  background: var(--line-soft);
+  border-radius: 3px;
+  margin: 12px 0 8px;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--gold); border-radius: 3px; }
+
+.goal-note {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.goal-note strong { color: var(--ink); font-weight: 600; }
+
+.status-line {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  text-align: right;
+  height: 14px;
+  margin-top: -12px;
+  margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<div class="ledger-root">
+  <div class="header">
+    <h1>Budget Ledger</h1>
+    <div class="month-nav">
+      <button id="prevMonth">‹</button>
+      <span id="monthLabel">—</span>
+      <button id="nextMonth">›</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="month">This month</button>
+    <button class="tab" data-tab="goals">Savings goals</button>
+  </div>
+
+  <div id="monthView">
+    <div class="row income-row">
+      <input class="name-input" value="Monthly income" readonly />
+      <div class="leader"></div>
+      <div class="amount-wrap"><span class="cur">€</span><input class="amount-input" id="incomeInput" type="number" inputmode="decimal" /></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Expenses</div>
+      <div id="expenseRows"></div>
+      <button class="add-line" id="addExpense">+ Add expense</button>
+      <div class="total-row"><span>Total expenses</span><span id="expenseTotal">€0</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Investing</div>
+      <div class="row">
+        <input class="name-input" value="VWCE" readonly />
+        <div class="leader"></div>
+        <div class="amount-wrap"><span class="cur">€</span><input class="amount-input" id="vwceInput" type="number" inputmode="decimal" /></div>
+      </div>
+      <div class="row">
+        <input class="name-input" value="Tech (CNDX)" readonly />
+        <div class="leader"></div>
+        <div class="amount-wrap"><span class="cur">€</span><input class="amount-input" id="techInput" type="number" inputmode="decimal" /></div>
+      </div>
+      <div class="total-row"><span>Total investing</span><span id="investTotal">€0</span></div>
+    </div>
+
+    <div class="summary">
+      <div class="figure" id="leftoverFigure">€0</div>
+      <div class="caption" id="leftoverCaption">left over — buffer, emergency fund, or extra savings</div>
+    </div>
+    <div class="status-line" id="statusLine"></div>
+  </div>
+
+  <div id="goalsView" style="display:none;">
+    <div class="goal-card">
+      <div class="goal-title">Emergency fund</div>
+      <div class="field-row"><label>Target</label><div><span style="color:var(--ink-soft)">€</span><input id="efTarget" type="number" inputmode="decimal" /></div></div>
+      <div class="field-row"><label>Saved so far</label><div><span style="color:var(--ink-soft)">€</span><input id="efSaved" type="number" inputmode="decimal" /></div></div>
+      <div class="field-row"><label>Adding per month</label><div><span style="color:var(--ink-soft)">€</span><input id="efMonthly" type="number" inputmode="decimal" /></div></div>
+      <div class="progress-track"><div class="progress-fill" id="efProgress" style="width:0%"></div></div>
+      <div class="goal-note" id="efNote"></div>
+    </div>
+
+    <div class="goal-card">
+      <div class="goal-title">Car fund — BMW</div>
+      <div class="field-row"><label>Target price</label><div><span style="color:var(--ink-soft)">€</span><input id="carTarget" type="number" inputmode="decimal" placeholder="35000" /></div></div>
+      <div class="field-row"><label>Target date</label><input id="carDate" type="date" /></div>
+      <div class="field-row"><label>Saved so far</label><div><span style="color:var(--ink-soft)">€</span><input id="carSaved" type="number" inputmode="decimal" /></div></div>
+      <div class="progress-track"><div class="progress-fill" id="carProgress" style="width:0%"></div></div>
+      <div class="goal-note" id="carNote"></div>
+    </div>
+    <div class="status-line" id="statusLineGoals"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const root = document.currentScript.parentElement;
+
+  const DEFAULT_EXPENSES = [
+    { name: 'Rent', amount: 540 },
+    { name: 'Phone bill', amount: 60 },
+    { name: 'Netflix & subscriptions', amount: 38 },
+    { name: 'Navigo', amount: 90 },
+    { name: 'Food', amount: 300 },
+  ];
+
+  let currentDate = new Date();
+  let monthOffset = 0;
+  let monthData = null;
+  let saveTimer = null;
+
+  // Uses Claude's storage when viewed inside Claude; falls back to the
+  // browser's own storage when opened standalone (e.g. as a home screen app),
+  // where it persists normally since there's no sandboxed iframe involved.
+  const Store = {
+    useLocal: !(window.storage && typeof window.storage.get === 'function'),
+    async get(key) {
+      if (this.useLocal) {
+        const v = localStorage.getItem(key);
+        if (v === null) throw new Error('not found');
+        return { value: v };
+      }
+      return window.storage.get(key, false);
+    },
+    async set(key, value) {
+      if (this.useLocal) {
+        localStorage.setItem(key, value);
+        return { key, value };
+      }
+      return window.storage.set(key, value, false);
+    }
+  };
+
+  function monthKey(offset) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  function monthLabel(offset) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1);
+    return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+
+  function fmt(n) {
+    n = Math.round(n);
+    return '€' + n.toLocaleString('en-GB');
+  }
+
+  function setStatus(el, text) {
+    el.textContent = text;
+    if (text) setTimeout(() => { if (el.textContent === text) el.textContent = ''; }, 1800);
+  }
+
+  async function loadMonth(offset) {
+    const key = 'budget:' + monthKey(offset);
+    document.getElementById('monthLabel').textContent = monthLabel(offset);
+    try {
+      const res = await Store.get(key);
+      monthData = JSON.parse(res.value);
+    } catch (e) {
+      // no data for this month — try previous month's expenses as a starting point
+      monthData = await buildDefaultForMonth(offset);
+    }
+    renderMonth();
+    renderGoals();
+  }
+
+  async function buildDefaultForMonth(offset) {
+    // Always start a new month from the standard baseline — nothing carries
+    // forward automatically, so temporary items (Klarna, one-off payments)
+    // don't linger into months where they no longer apply.
+    return { income: 2000, expenses: DEFAULT_EXPENSES.map(x => ({ ...x })), vwce: 200, tech: 0 };
+  }
+
+  async function saveMonthData(key, data) {
+    const statusEl = document.getElementById('statusLine');
+    try {
+      const res = await Store.set(key, JSON.stringify(data));
+      setStatus(statusEl, res ? 'Saved' : 'Could not save');
+    } catch (e) {
+      setStatus(statusEl, 'Could not save');
+    }
+  }
+
+  function queueSave() {
+    clearTimeout(saveTimer);
+    // Snapshot the key and data right now, at edit time — not when the
+    // timer fires later. This is what makes each month's data stay put
+    // even if you switch months again before the save completes.
+    const key = 'budget:' + monthKey(monthOffset);
+    const snapshot = JSON.parse(JSON.stringify(monthData));
+    saveTimer = setTimeout(() => saveMonthData(key, snapshot), 500);
+  }
+
+  function flushPendingSave() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+      const key = 'budget:' + monthKey(monthOffset);
+      const snapshot = JSON.parse(JSON.stringify(monthData));
+      saveMonthData(key, snapshot);
+    }
+  }
+
+  function renderMonth() {
+    document.getElementById('incomeInput').value = monthData.income;
+    document.getElementById('vwceInput').value = monthData.vwce;
+    document.getElementById('techInput').value = monthData.tech;
+
+    const container = document.getElementById('expenseRows');
+    container.innerHTML = '';
+    monthData.expenses.forEach((exp, i) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `
+        <input class="name-input" value="${exp.name.replace(/"/g,'&quot;')}" data-i="${i}" data-f="name" />
+        <div class="leader"></div>
+        <div class="amount-wrap"><span class="cur">€</span><input class="amount-input" type="number" inputmode="decimal" value="${exp.amount}" data-i="${i}" data-f="amount" /></div>
+        <button class="remove-btn" data-i="${i}" title="Remove">×</button>
+      `;
+      container.appendChild(row);
+    });
+
+    container.querySelectorAll('.name-input').forEach(inp => {
+      inp.addEventListener('input', e => {
+        monthData.expenses[+e.target.dataset.i].name = e.target.value;
+        updateTotals(); queueSave();
+      });
+    });
+    container.querySelectorAll('.amount-input').forEach(inp => {
+      inp.addEventListener('input', e => {
+        monthData.expenses[+e.target.dataset.i].amount = parseFloat(e.target.value) || 0;
+        updateTotals(); queueSave();
+      });
+    });
+    container.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        monthData.expenses.splice(+e.target.dataset.i, 1);
+        renderMonth(); queueSave();
+      });
+    });
+
+    updateTotals();
+  }
+
+  function updateTotals() {
+    const expTotal = monthData.expenses.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+    const investTotal = (parseFloat(monthData.vwce) || 0) + (parseFloat(monthData.tech) || 0);
+    const leftover = (parseFloat(monthData.income) || 0) - expTotal - investTotal;
+
+    document.getElementById('expenseTotal').textContent = fmt(expTotal);
+    document.getElementById('investTotal').textContent = fmt(investTotal);
+    const fig = document.getElementById('leftoverFigure');
+    fig.textContent = (leftover < 0 ? '−' : '') + fmt(Math.abs(leftover));
+    fig.className = 'figure ' + (leftover >= 0 ? 'pos' : 'neg');
+    document.getElementById('leftoverCaption').textContent = leftover >= 0
+      ? 'left over — buffer, emergency fund, or extra savings'
+      : 'over budget this month — something needs to give';
+  }
+
+  document.getElementById('incomeInput').addEventListener('input', e => {
+    monthData.income = parseFloat(e.target.value) || 0;
+    updateTotals(); queueSave();
+  });
+  document.getElementById('vwceInput').addEventListener('input', e => {
+    monthData.vwce = parseFloat(e.target.value) || 0;
+    updateTotals(); queueSave();
+  });
+  document.getElementById('techInput').addEventListener('input', e => {
+    monthData.tech = parseFloat(e.target.value) || 0;
+    updateTotals(); queueSave();
+  });
+  document.getElementById('addExpense').addEventListener('click', () => {
+    monthData.expenses.push({ name: 'New item', amount: 0 });
+    renderMonth(); queueSave();
+  });
+
+  document.getElementById('prevMonth').addEventListener('click', () => { flushPendingSave(); monthOffset--; loadMonth(monthOffset); });
+  document.getElementById('nextMonth').addEventListener('click', () => { flushPendingSave(); monthOffset++; loadMonth(monthOffset); });
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const isMonth = tab.dataset.tab === 'month';
+      document.getElementById('monthView').style.display = isMonth ? '' : 'none';
+      document.getElementById('goalsView').style.display = isMonth ? 'none' : '';
+    });
+  });
+
+  // ---- Goals ----
+  let goals = { ef: { target: 0, saved: 0, monthly: 0 }, car: { target: 0, saved: 0, date: '' } };
+
+  async function loadGoals() {
+    try {
+      const res = await Store.get('budget:goals');
+      goals = JSON.parse(res.value);
+    } catch (e) {
+      // no stored goals yet
+    }
+    if (!goals.car) goals.car = {};
+    if (!goals.ef) goals.ef = {};
+    if (!goals.car.date) {
+      const d = new Date(currentDate.getFullYear() + 1, 11, 31);
+      goals.car.date = d.toISOString().slice(0, 10);
+    }
+    document.getElementById('efTarget').value = goals.ef.target || '';
+    document.getElementById('efSaved').value = goals.ef.saved || '';
+    document.getElementById('efMonthly').value = goals.ef.monthly || '';
+    document.getElementById('carTarget').value = goals.car.target || '';
+    document.getElementById('carSaved').value = goals.car.saved || '';
+    document.getElementById('carDate').value = goals.car.date || '';
+    renderGoals();
+  }
+
+  async function saveGoals() {
+    const statusEl = document.getElementById('statusLineGoals');
+    try {
+      const res = await Store.set('budget:goals', JSON.stringify(goals));
+      setStatus(statusEl, res ? 'Saved' : 'Could not save');
+    } catch (e) {
+      setStatus(statusEl, 'Could not save');
+    }
+  }
+
+  let goalsSaveTimer = null;
+  function queueSaveGoals() {
+    clearTimeout(goalsSaveTimer);
+    goalsSaveTimer = setTimeout(saveGoals, 500);
+  }
+
+  function viewedDate() {
+    return new Date(currentDate.getFullYear(), currentDate.getMonth() + monthOffset, 1);
+  }
+
+  function renderGoals() {
+    const efTarget = goals.ef.target || 0;
+    const efSaved = goals.ef.saved || 0;
+    const efPct = efTarget > 0 ? Math.min(100, (efSaved / efTarget) * 100) : 0;
+    document.getElementById('efProgress').style.width = efPct + '%';
+    let efNote = '';
+    if (efTarget > 0 && goals.ef.monthly > 0) {
+      const remaining = Math.max(0, efTarget - efSaved);
+      const months = Math.ceil(remaining / goals.ef.monthly);
+      efNote = months > 0
+        ? `At <strong>€${goals.ef.monthly}/month</strong>, you'll reach this in about <strong>${months} month${months === 1 ? '' : 's'}</strong>.`
+        : `Target reached.`;
+    } else if (efTarget > 0) {
+      efNote = `${efPct.toFixed(0)}% saved. Add a monthly amount above to see a timeline.`;
+    }
+    document.getElementById('efNote').innerHTML = efNote;
+
+    const carTarget = goals.car.target || 0;
+    const carSaved = goals.car.saved || 0;
+    const carPct = carTarget > 0 ? Math.min(100, (carSaved / carTarget) * 100) : 0;
+    document.getElementById('carProgress').style.width = carPct + '%';
+    let carNote = '';
+    if (carTarget > 0 && !goals.car.date) {
+      carNote = `Set a target date above to see how much you need to save each month.`;
+    } else if (carTarget > 0 && goals.car.date) {
+      const target = new Date(goals.car.date + 'T00:00:00');
+      const now = viewedDate();
+      const monthsRemaining = Math.max(1, Math.round((target - now) / (1000 * 60 * 60 * 24 * 30.44)));
+      const remaining = Math.max(0, carTarget - carSaved);
+      const requiredMonthly = Math.ceil(remaining / monthsRemaining);
+      carNote = remaining <= 0
+        ? `Target reached — ${carPct.toFixed(0)}% saved.`
+        : `As of <strong>${monthLabel(monthOffset)}</strong>: about <strong>${monthsRemaining} months</strong> left — you'll need roughly <strong>€${requiredMonthly.toLocaleString('en-GB')}/month</strong> to hit this on time.`;
+    }
+    document.getElementById('carNote').innerHTML = carNote;
+  }
+
+  ['efTarget','efSaved','efMonthly'].forEach(id => {
+    document.getElementById(id).addEventListener('input', e => {
+      const field = id.replace('ef', '').toLowerCase();
+      goals.ef[field] = parseFloat(e.target.value) || 0;
+      renderGoals(); queueSaveGoals();
+    });
+  });
+  document.getElementById('carTarget').addEventListener('input', e => {
+    goals.car.target = parseFloat(e.target.value) || 0;
+    renderGoals(); queueSaveGoals();
+  });
+  document.getElementById('carSaved').addEventListener('input', e => {
+    goals.car.saved = parseFloat(e.target.value) || 0;
+    renderGoals(); queueSaveGoals();
+  });
+  document.getElementById('carDate').addEventListener('input', e => {
+    goals.car.date = e.target.value;
+    renderGoals(); queueSaveGoals();
+  });
+
+  loadMonth(0);
+  loadGoals();
+})();
+</script>
+</body>
+</html>
